@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { View, Text, ActivityIndicator, StyleSheet, SafeAreaView } from 'react-native';
 import * as Location from 'expo-location';
 import axios from 'axios';
 import { WeatherData } from '../constants/types'; 
@@ -54,8 +55,57 @@ export default function WeatherApp() {
       setCity(response.data.name);
     } catch (error) {
       console.error('Error fetching weather by coordinates:', error);
+      setError('Failed to fetch weather data.');
     }
   };
 
-  return null; 
+  return (
+    <SafeAreaView style={styles.container}>
+      {loading ? (
+        <ActivityIndicator size="large" color="#0000ff" />
+      ) : error ? (
+        <Text style={styles.errorText}>{error}</Text>
+      ) : weatherData ? (
+        <View style={styles.weatherContainer}>
+          <Text style={styles.cityName}>{city}</Text>
+          <Text style={styles.temperature}>{Math.round(weatherData.main.temp)}Â°C</Text>
+          <Text style={styles.description}>{weatherData.weather[0].description}</Text>
+        </View>
+      ) : (
+        <Text style={styles.errorText}>No weather data available.</Text>
+      )}
+    </SafeAreaView>
+  );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  weatherContainer: {
+    alignItems: 'center',
+  },
+  cityName: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  temperature: {
+    fontSize: 42,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  description: {
+    fontSize: 24,
+    marginBottom: 20,
+    textTransform: 'capitalize',
+  },
+  errorText: {
+    fontSize: 18,
+    color: 'red',
+    textAlign: 'center',
+  },
+});
