@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, SafeAreaView, ScrollView, Image } from 'react-native';
 import * as Location from 'expo-location';
 import axios from 'axios';
 import { WeatherData, ForecastData, ForecastItem } from '../constants/types'; 
@@ -14,17 +14,14 @@ export default function WeatherApp() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetches Weather data based on user's location when opening the app
   useEffect(() => {
     getLocationWeather();
   }, []);
 
-  // This function fetches weather data based on the user's current location
   const getLocationWeather = async () => {
     setLoading(true);
     setError(null);
     try {
-      // Request location permission
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         setError('Permission to access location was denied');
@@ -32,12 +29,10 @@ export default function WeatherApp() {
         return;
       }
 
-      // Get current location: This uses the device's GPS or network location
       let location = await Location.getCurrentPositionAsync({});
       const lat = location.coords.latitude;
       const lon = location.coords.longitude;
 
-      // Fetch weather and forecast data based on latitude and longitude
       await fetchWeatherByCoords(lat, lon);
       await fetchForecastByCoords(lat, lon);
     } catch (error) {
@@ -47,7 +42,6 @@ export default function WeatherApp() {
     setLoading(false);
   };
 
-  // Fetches Weather data by coordinates
   const fetchWeatherByCoords = async (lat: number, lon: number) => {
     try {
       const response = await axios.get<WeatherData>(
@@ -61,7 +55,6 @@ export default function WeatherApp() {
     }
   };
 
-  // Fetches Forecast data by coordinates
   const fetchForecastByCoords = async (lat: number, lon: number) => {
     try {
       const response = await axios.get<ForecastData>(
@@ -74,6 +67,10 @@ export default function WeatherApp() {
     }
   };
 
+  const getWeatherIcon = (iconCode: string) => {
+    return `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {loading ? (
@@ -84,6 +81,10 @@ export default function WeatherApp() {
         <ScrollView>
           <View style={styles.weatherContainer}>
             <Text style={styles.cityName}>{city}</Text>
+            <Image
+              style={styles.weatherIcon}
+              source={{ uri: getWeatherIcon(weatherData.weather[0].icon) }}
+            />
             <Text style={styles.temperature}>{Math.round(weatherData.main.temp)}°C</Text>
             <Text style={styles.description}>{weatherData.weather[0].description}</Text>
           </View>
@@ -97,6 +98,10 @@ export default function WeatherApp() {
                       weekday: 'short',
                     })}
                   </Text>
+                  <Image
+                    style={styles.forecastIcon}
+                    source={{ uri: getWeatherIcon(item.weather[0].icon) }}
+                  />
                   <Text style={styles.forecastTemp}>{Math.round(item.main.temp)}°C</Text>
                   <Text style={styles.forecastDescription}>{item.weather[0].description}</Text>
                 </View>
@@ -123,6 +128,11 @@ const styles = StyleSheet.create({
   cityName: {
     fontSize: 32,
     fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  weatherIcon: {
+    width: 100,
+    height: 100,
     marginBottom: 10,
   },
   temperature: {
@@ -155,9 +165,14 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#ddd',
+    alignItems: 'center',
   },
   forecastDay: {
     fontSize: 18,
+  },
+  forecastIcon: {
+    width: 50,
+    height: 50,
   },
   forecastTemp: {
     fontSize: 18,
