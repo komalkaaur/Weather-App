@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet, SafeAreaView } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
 import * as Location from 'expo-location';
 import axios from 'axios';
-import { WeatherData } from '../constants/types'; 
+import { WeatherData, ForecastData, ForecastItem } from '../constants/types'; 
 
 // Use environment variables to protect API Keys (Sensitive Information)
 const OPEN_WEATHER_MAP_API_KEY = process.env.EXPO_PUBLIC_OPEN_WEATHER_MAP_API_KEY;
@@ -10,6 +10,7 @@ const OPEN_WEATHER_MAP_API_KEY = process.env.EXPO_PUBLIC_OPEN_WEATHER_MAP_API_KE
 export default function WeatherApp() {
   const [city, setCity] = useState('');
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
+  const [forecastData, setForecastData] = useState<ForecastItem[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,8 +37,9 @@ export default function WeatherApp() {
       const lat = location.coords.latitude;
       const lon = location.coords.longitude;
 
-      // Fetch weather data based on latitude and longitude
+      // Fetch weather and forecast data based on latitude and longitude
       await fetchWeatherByCoords(lat, lon);
+      await fetchForecastByCoords(lat, lon);
     } catch (error) {
       console.error('Error getting location weather:', error);
       setError('Failed to get weather. Please try again.');
@@ -59,6 +61,19 @@ export default function WeatherApp() {
     }
   };
 
+  // Fetches Forecast data by coordinates
+  const fetchForecastByCoords = async (lat: number, lon: number) => {
+    try {
+      const response = await axios.get<ForecastData>(
+        `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${OPEN_WEATHER_MAP_API_KEY}&units=metric`
+      );
+      setForecastData(response.data.list);
+    } catch (error) {
+      console.error('Error fetching forecast by coordinates:', error);
+      setError('Failed to fetch forecast data.');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {loading ? (
@@ -66,11 +81,29 @@ export default function WeatherApp() {
       ) : error ? (
         <Text style={styles.errorText}>{error}</Text>
       ) : weatherData ? (
-        <View style={styles.weatherContainer}>
-          <Text style={styles.cityName}>{city}</Text>
-          <Text style={styles.temperature}>{Math.round(weatherData.main.temp)}Â°C</Text>
-          <Text style={styles.description}>{weatherData.weather[0].description}</Text>
-        </View>
+        <ScrollView>
+          <View style={styles.weatherContainer}>
+            <Text style={styles.cityName}>{city}</Text>
+            <Text style={styles.temperature}>{Math.round(weatherData.main.temp)}°C</Text>
+            <Text style={styles.description}>{weatherData.weather[0].description}</Text>
+          </View>
+          {forecastData && (
+            <View style={styles.forecastContainer}>
+              <Text style={styles.forecastTitle}>5-Day Forecast</Text>
+              {forecastData.slice(0, 5).map((item, index) => (
+                <View key={index} style={styles.forecastItem}>
+                  <Text style={styles.forecastDay}>
+                    {new Date(item.dt * 1000).toLocaleDateString('en-US', {
+                      weekday: 'short',
+                    })}
+                  </Text>
+                  <Text style={styles.forecastTemp}>{Math.round(item.main.temp)}°C</Text>
+                  <Text style={styles.forecastDescription}>{item.weather[0].description}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </ScrollView>
       ) : (
         <Text style={styles.errorText}>No weather data available.</Text>
       )}
@@ -81,12 +114,11 @@ export default function WeatherApp() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     padding: 16,
   },
   weatherContainer: {
     alignItems: 'center',
+    marginBottom: 20,
   },
   cityName: {
     fontSize: 32,
@@ -100,12 +132,38 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 24,
-    marginBottom: 20,
     textTransform: 'capitalize',
+    marginBottom: 20,
   },
   errorText: {
     fontSize: 18,
     color: 'red',
     textAlign: 'center',
+  },
+  forecastContainer: {
+    marginTop: 20,
+  },
+  forecastTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  forecastItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+  },
+  forecastDay: {
+    fontSize: 18,
+  },
+  forecastTemp: {
+    fontSize: 18,
+  },
+  forecastDescription: {
+    fontSize: 18,
+    textTransform: 'capitalize',
   },
 });
